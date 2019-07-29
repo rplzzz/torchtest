@@ -22,5 +22,5 @@ def main(length):
         print(f'rank: {rank}:  done.\n')
 
 if __name__ == '__main__':
-    dist.init_process_group('mpi', main)
-
+    dist.init_process_group('mpi')
+    main(1024)
