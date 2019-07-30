@@ -4,6 +4,7 @@
 #SBATCH -A dlclim
 #SBATCH --gres=gpu:2
 #SBATCH --ntasks-per-node=1
+#SBATCH -J nccl-test
 
 module load gcc
 module load python/anaconda3
