@@ -4,24 +4,37 @@ import torch
 import torch.distributed as dist
 import argparse
 
-def main(length):
+def main(length, dev):
     """Set up an array of specified length and gather it back to the root process."""
     rank = dist.get_rank()
     comm_size = dist.get_world_size()
 
-    print(f'Starting rank {rank} of {comm_size}')
+    ofname = f'log-{rank}.txt'
 
-    x = torch.ones(length) * rank # Default type is float, which is a good choice.
+    #torch.cuda.set_device(lrank)
+    #dev = torch.device(f'cuda:{lrank}')
 
-    buf = [torch.empty(length) for i in range(comm_size)]
 
-    dist.all_gather(buf, x)      # Synchronous collective: all processes block until complete.
+    with open(ofname, 'w') as of:
+        of.write(f'Starting rank {rank} of {comm_size}\n')
+        of.write(f'Device = {dev}\n')
+        of.flush()
 
-    if rank==0:
-        rslt = torch.stack(buf)
-        print(f'rank: {rank}:\n{rslt}')
-    else:
-        print(f'rank: {rank}:  done.\n')
+        ## Default type is float, which is a good choice.
+        x = torch.ones(length) * rank 
+        x = x.cuda()
+        
+        buf = [torch.empty(length).to(torch.device('cuda')) for i in range(comm_size)]
+        
+        dist.all_gather(buf, x)
+
+        if rank==0:
+            rslt = torch.stack(buf)
+            of.write(f'rank: {rank}:\n{rslt}')
+            of.write('\n')
+        else:
+            of.write(f'rank: {rank}:  done.\n')
+        
 
 if __name__ == '__main__':
 
@@ -29,9 +42,10 @@ if __name__ == '__main__':
     parser.add_argument('--local_rank', type=int)
     args=parser.parse_args()
 
-    rank = args.local_rank
-    print(f'localrank: {rank}   host: {os.uname()[1]}')
-    
-    dist.init_process_group('gloo', 'env://')
-    main(1024)
+    lrank = args.local_rank
+    print(f'localrank: {lrank}   host: {os.uname()[1]}')
+    torch.cuda.set_device(lrank)
+
+    dist.init_process_group('nccl', 'env://')
+    main(1024, lrank)
 
