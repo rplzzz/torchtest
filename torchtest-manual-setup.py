@@ -2,7 +2,7 @@
 import os
 import torch
 import torch.distributed as dist
-import argparse
+from torch.multiprocessing import Process
 
 def main(length):
     """Set up an array of specified length and gather it back to the root process."""
@@ -23,15 +23,26 @@ def main(length):
     else:
         print(f'rank: {rank}:  done.\n')
 
+
+def init_proc(rank, size, run, backend, mainarg):
+    os.environ['MASTER_ADDR'] = '127.0.0.1'
+    os.environ['MASTER_PORT'] = '24601'
+    dist.init_process_group(backend, rank=rank, world_size=size)
+    run(mainarg)
+
+
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--local_rank', type=int)
-    args=parser.parse_args()
+    size = 2
+    procs = []
+    length = 1024
 
-    rank = args.local_rank
-    print(f'localrank: {rank}   host: {os.uname()[1]}')
-    
-    dist.init_process_group('gloo', 'env://')
-    main(1024)
+    for rank in range(size):
+        p = Process(target=init_proc, args=(rank, size, main, 'gloo', length))
+        p.start()
+        procs.append(p)
+
+    for p in procs:
+        p.join()
+
 
