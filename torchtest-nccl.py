@@ -11,10 +11,6 @@ def main(length, dev):
 
     ofname = f'log-{rank}.txt'
 
-    #torch.cuda.set_device(lrank)
-    #dev = torch.device(f'cuda:{lrank}')
-
-
     with open(ofname, 'w') as of:
         of.write(f'Starting rank {rank} of {comm_size}\n')
         of.write(f'Device = {dev}\n')
@@ -22,7 +18,7 @@ def main(length, dev):
 
         ## Default type is float, which is a good choice.
         x = torch.ones(length) * rank 
-        x = x.cuda()
+        x = x.cuda() # Weirdly, trying to do this conversion all in one line caused the program to hang.
         
         buf = [torch.empty(length).to(torch.device('cuda')) for i in range(comm_size)]
         
